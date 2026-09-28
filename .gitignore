@@ -1,0 +1,9 @@
+tmp/
+.env
+.env.*
+.secrets/
+!.env.example
+!.env.compose.example
+*.exe
+*.test
+coverage.out

@@ -1,0 +1,400 @@
+openapi: 3.1.0
+info:
+  title: HookRelay API
+  version: 0.8.0-dev
+  description: >-
+    Producer requests are idempotent by key. Transient signed delivery
+    failures are retried within a bounded attempt and age budget. Expired
+    worker claims leave an unknown attempt before recovery. Public HTTPS
+    targets require a configured, versioned key ID. The demo HTTP exception
+    requires an explicit local demo profile. This is the local v0.8 contract;
+    the API schema is the same in direct Go, Compose, and kind runs.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Direct local API, Compose host port, or kind loopback port-forward
+components:
+  securitySchemes:
+    producerToken:
+      type: http
+      scheme: bearer
+    adminToken:
+      type: http
+      scheme: bearer
+  schemas:
+    Endpoint:
+      type: object
+      required: [id, name, url, key_id, version, enabled, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        url: {type: string, format: uri}
+        key_id: {type: string, description: Signing key identifier; never the key value}
+        version: {type: integer, minimum: 1}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+    EndpointInput:
+      type: object
+      additionalProperties: false
+      required: [name, url]
+      properties:
+        name: {type: string, pattern: '^[A-Za-z][A-Za-z0-9_-]{0,63}$'}
+        url:
+          type: string
+          format: uri
+          description: Public HTTPS on port 443, or one exact local demo URL in demo profile
+        key_id:
+          type: string
+          description: Required for HTTPS targets; must name a configured external key file
+    EndpointUpdate:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      anyOf:
+        - required: [url]
+        - required: [key_id]
+        - required: [enabled]
+      properties:
+        expected_version: {type: integer, minimum: 1}
+        url:
+          type: string
+          format: uri
+          description: Public HTTPS on port 443, or one exact local demo URL in demo profile
+        key_id:
+          type: string
+          description: Rotate to a configured key ID; previous deliveries retain their old key ID
+        enabled: {type: boolean}
+    EndpointPage:
+      type: object
+      required: [items, limit, offset]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Endpoint'}}
+        limit: {type: integer, minimum: 1, maximum: 100}
+        offset: {type: integer, minimum: 0, maximum: 10000}
+        next_offset: {type: integer, minimum: 1}
+    EventInput:
+      type: object
+      additionalProperties: false
+      required: [type, payload, endpoint_ids]
+      properties:
+        type:
+          type: string
+          pattern: '^[A-Za-z][A-Za-z0-9_.-]{0,127}$'
+          example: order.created
+        payload:
+          type: object
+          additionalProperties: true
+          example: {order_id: demo-1}
+        endpoint_ids:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: {type: string, format: uuid}
+    Delivery:
+      type: object
+      required: [id, endpoint_id, endpoint_url, endpoint_version, status, attempt_count, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        event_id: {type: string, format: uuid}
+        endpoint_id: {type: string, format: uuid}
+        endpoint_url: {type: string, format: uri}
+        endpoint_version: {type: integer, minimum: 1}
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, retry_wait, dead]
+          description: New work uses retry_wait or dead for failures; failed can remain in historical v0.2 rows.
+        attempt_count: {type: integer, minimum: 0, maximum: 5}
+        next_attempt_at: {type: string, format: date-time}
+        terminal_reason: {type: string}
+        created_at: {type: string, format: date-time}
+    Attempt:
+      type: object
+      required: [id, delivery_id, status, started_at]
+      properties:
+        id: {type: string, format: uuid}
+        delivery_id: {type: string, format: uuid}
+        status: {type: string, enum: [processing, succeeded, failed, unknown]}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time}
+        http_status: {type: integer, minimum: 100, maximum: 599}
+        failure_class: {type: string}
+    AttemptPage:
+      type: object
+      required: [items, limit, offset]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Attempt'}
+        limit: {type: integer, minimum: 1, maximum: 100}
+        offset: {type: integer, minimum: 0, maximum: 10000}
+        next_offset: {type: integer, minimum: 1}
+    Event:
+      type: object
+      required: [id, type, payload, created_at, deliveries]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string}
+        payload: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+        deliveries:
+          type: array
+          items: {$ref: '#/components/schemas/Delivery'}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}
+paths:
+  /livez:
+    get:
+      summary: Process liveness; does not check database readiness
+      responses:
+        '204': {description: API process is alive}
+  /readyz:
+    get:
+      summary: API can read PostgreSQL and its required schema migration
+      description: Database errors leave liveness unchanged and return 503 here. No bearer token is needed on the loopback development server.
+      responses:
+        '204': {description: API database connection and required schema are ready}
+        '503': {description: API is not ready; response contains no database details}
+  /v1/metrics:
+    get:
+      summary: Read retained queue and delivery metrics plus API database pool statistics
+      description: >-
+        Prometheus text 0.0.4. Database-backed counts and duration buckets are
+        gauges because retention can remove rows; samples are not an atomic
+        database snapshot. Labels come only from fixed status, time-bound and
+        pool-state sets. This endpoint does not establish database readiness.
+      security: [{adminToken: []}]
+      responses:
+        '200':
+          description: Prometheus text metrics
+          content:
+            text/plain:
+              schema: {type: string}
+        '401': {description: Admin token required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429': {description: Metrics read rate exceeded, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Metrics could not be read, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /v1/endpoints:
+    post:
+      summary: Create a managed target
+      security: [{adminToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EndpointInput'}
+      responses:
+        '201':
+          description: Target created
+          headers:
+            Location: {description: Relative target URL, schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Endpoint'}
+        '400': {description: Invalid name or URL, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Admin token required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: Name already exists, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429': {description: Admin mutation rate exceeded, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: Body exceeds 2 KiB, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '415': {description: Content-Type must be application/json, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Target could not be stored, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    get:
+      summary: List managed targets, including disabled targets
+      security: [{adminToken: []}]
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, maximum: 10000, default: 0}
+      responses:
+        '200': {description: Target page, content: {application/json: {schema: {$ref: '#/components/schemas/EndpointPage'}}}}
+        '400': {description: Invalid pagination, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Admin token required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Targets could not be read, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /v1/endpoints/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Read one managed target
+      security: [{adminToken: []}]
+      responses:
+        '200': {description: Target, content: {application/json: {schema: {$ref: '#/components/schemas/Endpoint'}}}}
+        '400': {description: Invalid ID, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Admin token required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: Target not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Target could not be read, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    patch:
+      summary: Change URL or enabled state if the version still matches
+      description: >-
+        URL, key ID or enabled-state changes increment version. URL and key changes affect only future deliveries. Disabling
+        makes waiting deliveries dead; an already processing HTTP call may finish.
+        Re-enabling does not resurrect dead jobs.
+      security: [{adminToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EndpointUpdate'}
+      responses:
+        '200': {description: Updated target, content: {application/json: {schema: {$ref: '#/components/schemas/Endpoint'}}}}
+        '400': {description: Invalid ID or update, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Admin token required, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: Target not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '409': {description: Target version changed, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '429': {description: Admin mutation rate exceeded, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '413': {description: Body exceeds 2 KiB, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '415': {description: Content-Type must be application/json, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Target could not be updated, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /v1/events:
+    post:
+      summary: Atomically accept an event and pending delivery jobs once per key
+      security: [{producerToken: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Single local producer scope; reuse for retries of the same event request
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EventInput'}
+      responses:
+        '202':
+          description: Event committed or an identical request replayed; delivery may occur later
+          headers:
+            Location: {schema: {type: string}, description: Relative event URL}
+            Idempotency-Replayed: {schema: {type: string, enum: ['true']}, description: Present on an identical replay}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400':
+          description: Invalid request, missing/invalid Idempotency-Key, or unavailable endpoint
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '401':
+          description: Bearer token missing or invalid
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '409':
+          description: Idempotency-Key already used for different content
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '413':
+          description: Request body exceeds 256 KiB
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '415':
+          description: Content-Type must be application/json
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '429':
+          description: Producer acceptance rate exceeded; Retry-After is one second
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '503':
+          description: Event could not be stored
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /v1/events/{id}:
+    get:
+      summary: Read an event and its delivery jobs
+      security: [{producerToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event and deliveries
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400':
+          description: Invalid UUID
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '401':
+          description: Bearer token missing or invalid
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '503':
+          description: Event could not be read
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /v1/deliveries/{id}:
+    get:
+      summary: Read delivery state
+      security: [{producerToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Delivery state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Delivery'}
+        '400': {description: Invalid UUID, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Bearer token missing or invalid, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: Delivery not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Delivery could not be read, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /v1/deliveries/{id}/attempts:
+    get:
+      summary: Read a bounded page of delivery attempts
+      security: [{producerToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, maximum: 10000, default: 0}
+      responses:
+        '200':
+          description: Attempt page ordered newest first
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AttemptPage'}
+        '400': {description: Invalid ID or pagination, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '401': {description: Bearer token missing or invalid, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '404': {description: Delivery not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '503': {description: Attempt history could not be read, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}

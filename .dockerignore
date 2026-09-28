@@ -1,0 +1,15 @@
+.env*
+.secrets/
+.git/
+.agents/
+.codex/
+tmp/
+docs/
+scripts/
+examples/
+*.key
+*.dump
+*.log
+*.exe
+*.test
+coverage.out

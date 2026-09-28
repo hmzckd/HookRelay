@@ -1,0 +1,127 @@
+name: hookrelay
+
+x-app: &app
+  image: hookrelay:local
+
+x-db-url: &db-url postgres://hookrelay:${HOOKRELAY_DB_PASSWORD:?Run scripts/init-compose-env.ps1 first}@db:5432/hookrelay?sslmode=disable
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: hookrelay
+      POSTGRES_DB: hookrelay
+      POSTGRES_PASSWORD: ${HOOKRELAY_DB_PASSWORD:?Run scripts/init-compose-env.ps1 first}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hookrelay -d hookrelay"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    entrypoint: ["/app/migrate"]
+    environment:
+      DATABASE_URL: *db-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: *db-url
+      PRODUCER_TOKEN: ${HOOKRELAY_PRODUCER_TOKEN:?Run scripts/init-compose-env.ps1 first}
+      ADMIN_TOKEN: ${HOOKRELAY_ADMIN_TOKEN:?Run scripts/init-compose-env.ps1 first}
+      TARGET_PROFILE: demo
+      HOOKRELAY_CONTAINER_MODE: compose
+      LISTEN_ADDR: 0.0.0.0:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/app/probe", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+  demo-a:
+    <<: *app
+    entrypoint: ["/app/demo-receiver"]
+    command: ["-listen", "0.0.0.0:18080", "-key-id", "demo/a-v1"]
+    environment:
+      DATABASE_URL: *db-url
+      DEMO_RECEIVER_SECRET: ${HOOKRELAY_DEMO_A_SECRET:?Run scripts/init-compose-env.ps1 first}
+      HOOKRELAY_CONTAINER_MODE: compose
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/app/probe", "http://127.0.0.1:18080/readyz"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  demo-b:
+    <<: *app
+    entrypoint: ["/app/demo-receiver"]
+    command: ["-listen", "0.0.0.0:18081", "-key-id", "demo/b-v1"]
+    environment:
+      DATABASE_URL: *db-url
+      DEMO_RECEIVER_SECRET: ${HOOKRELAY_DEMO_B_SECRET:?Run scripts/init-compose-env.ps1 first}
+      HOOKRELAY_CONTAINER_MODE: compose
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/app/probe", "http://127.0.0.1:18081/readyz"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    entrypoint: ["/app/worker"]
+    environment:
+      DATABASE_URL: *db-url
+      TARGET_PROFILE: demo
+      HOOKRELAY_CONTAINER_MODE: compose
+      DEMO_A_SECRET: ${HOOKRELAY_DEMO_A_SECRET:?Run scripts/init-compose-env.ps1 first}
+      DEMO_B_SECRET: ${HOOKRELAY_DEMO_B_SECRET:?Run scripts/init-compose-env.ps1 first}
+      WORKER_CONCURRENCY: 4
+      WORKER_HEALTH_ADDR: 127.0.0.1:8082
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      demo-a:
+        condition: service_healthy
+      demo-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/probe", "http://127.0.0.1:8082/readyz"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+volumes:
+  pgdata:

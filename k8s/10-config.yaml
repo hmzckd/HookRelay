@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hookrelay-config
+  namespace: hookrelay
+data:
+  TARGET_PROFILE: demo
+  HOOKRELAY_CONTAINER_MODE: compose
+  LISTEN_ADDR: 0.0.0.0:8080
+  WORKER_CONCURRENCY: "4"
+  WORKER_HEALTH_ADDR: 127.0.0.1:8082

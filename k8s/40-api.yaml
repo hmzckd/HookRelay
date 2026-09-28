@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: hookrelay
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hookrelay
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: hookrelay
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hookrelay
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hookrelay
+        app.kubernetes.io/component: api
+    spec:
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: api
+          image: hookrelay:local
+          imagePullPolicy: Never
+          command: ["/app/api"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: DATABASE_URL
+            - name: PRODUCER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: PRODUCER_TOKEN
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: ADMIN_TOKEN
+            - name: TARGET_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: TARGET_PROFILE
+            - name: HOOKRELAY_CONTAINER_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: HOOKRELAY_CONTAINER_MODE
+            - name: LISTEN_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: LISTEN_ADDR
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 2
+            failureThreshold: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 3
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi

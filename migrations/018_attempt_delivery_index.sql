@@ -1,0 +1,1 @@
+CREATE INDEX delivery_attempts_delivery_id_idx ON delivery_attempts (delivery_id)

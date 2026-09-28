@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: hookrelay
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hookrelay
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hookrelay
+        app.kubernetes.io/component: worker
+    spec:
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: worker
+          image: hookrelay:local
+          imagePullPolicy: Never
+          command: ["/app/worker"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: DATABASE_URL
+            - name: DEMO_A_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: DEMO_A_SECRET
+            - name: DEMO_B_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hookrelay-secrets
+                  key: DEMO_B_SECRET
+            - name: TARGET_PROFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: TARGET_PROFILE
+            - name: HOOKRELAY_CONTAINER_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: HOOKRELAY_CONTAINER_MODE
+            - name: WORKER_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: WORKER_CONCURRENCY
+            - name: WORKER_HEALTH_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: hookrelay-config
+                  key: WORKER_HEALTH_ADDR
+          startupProbe:
+            exec:
+              command: ["/app/probe", "http://127.0.0.1:8082/livez"]
+            periodSeconds: 2
+            failureThreshold: 15
+          readinessProbe:
+            exec:
+              command: ["/app/probe", "http://127.0.0.1:8082/readyz"]
+            periodSeconds: 3
+            timeoutSeconds: 4
+          livenessProbe:
+            exec:
+              command: ["/app/probe", "http://127.0.0.1:8082/livez"]
+            periodSeconds: 10
+            timeoutSeconds: 4
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
