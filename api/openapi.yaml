@@ -1,13 +1,13 @@
 openapi: 3.1.0
 info:
   title: HookRelay API
-  version: 0.8.0-dev
+  version: 1.0.0
   description: >-
     Producer requests are idempotent by key. Transient signed delivery
     failures are retried within a bounded attempt and age budget. Expired
     worker claims leave an unknown attempt before recovery. Public HTTPS
     targets require a configured, versioned key ID. The demo HTTP exception
-    requires an explicit local demo profile. This is the local v0.8 contract;
+    requires an explicit local demo profile. This is the local v1.0 contract;
     the API schema is the same in direct Go, Compose, and kind runs.
 servers:
   - url: http://127.0.0.1:8080

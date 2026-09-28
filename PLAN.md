@@ -1,7 +1,7 @@
 # HookRelay — sürüm sürüm geliştirme planı
 
 Plan tarihi: 23 Eylül 2026
-Durum: v1.0/HR-028 tamamlandı; sıradaki iş HR-029 temiz kurulum ve demo doğrulamasıdır. Dış HTTPS hedefi yapılandırılabilir; gerçek internet alıcısına gönderim denenmedi. Race detector Linux CI'da geçti; yayımlanmış sürüm etiketi yoktur. Gerçek durum ve kanıtlar [docs/tasks.md](docs/tasks.md) dosyasında.
+Durum: yerel v1.0/HR-029 kabulü tamamlandı. Dış HTTPS hedefi yapılandırılabilir; gerçek internet alıcısına gönderim denenmedi. Race detector Linux CI'da geçti; yayımlanmış sürüm etiketi yoktur. Sonuç [docs/releases/v1.0.md](docs/releases/v1.0.md) dosyasında.
 Hedef: Yerelde çalıştırılabilen ve mühendislik kararları gösterilebilen v1.0. AWS isteğe bağlıdır.
 
 ## 1. Projenin amacı ve sınırları
@@ -175,7 +175,7 @@ Sahiplenme ile girişim kaydı ve deneme sayacı aynı transaction'da başlatıl
 ### v1.0 — Portföye hazır yerel ürün
 
 - **Amaç:** Kodun yanında kararların, sınırların ve tekrarlanabilir kanıtların sunulması.
-- **Kapsam:** README, mimari ve ADR belgeleri, OpenAPI, teslimat garantileri, güvenlik sınırları, işletim rehberi, kısa demo senaryosu/video taslağı ve sürüm notu. CI tanımı: biçim kontrolü, statik analiz, birim testleri, gerçek PostgreSQL entegrasyonu, uygun ortamda race testi ve image build. Kullanıcı repo bağlayınca aynı kontroller CI'da çalıştırılabilir.
+- **Kapsam:** README, mimari ve ADR belgeleri, OpenAPI, teslimat garantileri, güvenlik sınırları, işletim rehberi, kısa demo senaryosu/video taslağı ve sürüm notu. CI biçim, statik analiz, birim testleri, gerçek PostgreSQL entegrasyonu, Linux race testi ve image build'i çalıştırır.
 - **Kapsam dışı:** Yeni büyük özellik, frontend paneli, AWS zorunluluğu, performans/SLA sertifikasyonu, otomatik Git yayını.
 - **Somut teslimatlar:** Başka geliştiricinin takip edebileceği kurulum; başarılı/başarısız gönderim ve duplicate demosu; ölçüm koşullarıyla rapor; bilinen eksikler listesi; gözden geçirilebilir release paketi.
 - **Öğrenilecekler:** API uyumluluğu, teknik karar anlatımı, tekrarlanabilir doğrulama ve dürüst portföy sunumu.
@@ -213,7 +213,7 @@ EKS ücreti yalnızca gelen webhook sayısına bağlı değildir: cluster yönet
 
 ## 6. Sürümlerden bağımsız küçük görev listesi
 
-Her görev bir gözden geçirilebilir değişiklik ve onun doğrudan doğrulamasıyla kapanır. Görevler aşağıda henüz başlanmamış kabul edilir. Sürüm tablosu sonuçları, bu liste günlük çalışma parçalarını tanımlar.
+Her görev bir gözden geçirilebilir değişiklik ve onun doğrudan doğrulamasıyla kapanır. Aşağıdaki liste ilk iş bölümüdür; güncel durum ve kanıtlar [görev tablosundadır](docs/tasks.md).
 
 | ID | Sürüm | Küçük görev ve bitiş kanıtı |
 | --- | --- | --- |
@@ -272,7 +272,7 @@ Mock, retry hesaplama ve imza gibi saf iş kuralları için kullanılabilir; SQL
 
 ## 8. Önerilen repo ve doküman düzeni
 
-Aşağıdaki ağaç hedef düzendir; bugün yalnızca bu plan dosyası oluşturulmuştur. Klasörler ihtiyaç doğdukça eklenir. Mevcut CV görseli HookRelay projesinin parçası değildir.
+Aşağıdaki ağaç başlangıçtaki hedef düzendir. Gerçek dosya düzeni repo kökünde görülebilir; kullanılmayan klasörler oluşturulmadı. CV görseli HookRelay projesinin parçası değildir.
 
 ```text
 HookRelay/
@@ -318,10 +318,10 @@ HookRelay/
 
 Görev durumları: `TODO → IN_PROGRESS → VERIFY → DONE`; dış bağımlılık varsa `BLOCKED` ve nedeni. `DONE` için görevde tanımlı gözlenebilir sonuç ve doğrulama kanıtı gerekir. Her sürümün sonunda uygulanan kapsam, çalıştırılan kontroller, bilinen eksikler ve sıradaki tek görev yazılır. Dokümanların “öneri” ile “uygulandı” durumları ayrı tutulur.
 
-## 9. İlk uygulanacak adım
+## 9. Başlangıç notu (tarihsel)
 
 İlk iş **HR-001–003: v0.1 sözleşmesini sabitlemek**. Mevcut araçları kontrol et; örnek olayı, kontrollü demo hedefini, kabul/okuma yanıtını ve ilk veri modelini yaz. Çıktı `docs/architecture.md`, `api/openapi.yaml` taslağı ve ilk ADR olur. Bunlar hazır olunca HR-004–006 ile yalnızca API + PostgreSQL kabul dilimi uygulanır.
 
 Bu ilk dilimin demosu şu kadar küçük kalır: “Bir olay gönder; event ID al; API sürecini yeniden başlat; aynı olayı oku; teslimat satırının pending olduğunu göster. Teslimat kaydı oluşturulamazsa olayın da oluşmadığını test et.” Worker ve altyapı genişlemesi sonraki sürümlerdedir.
 
-HR-028'den sonraki geliştirme işi HR-029 temiz kurulum ve demo doğrulamasıdır. Çalışmalar sürüm/görev sırasıyla ilerler; bütün yol haritası tek değişiklikte uygulanmaz.
+HR-029 ile yerel v1.0 kabulü tamamlandı. HR-030 bulut seçeneklerini yalnızca ihtiyaç, bütçe ve kaldırma planı netleşirse ele alır.

@@ -61,7 +61,7 @@ services:
   demo-a:
     <<: *app
     entrypoint: ["/app/demo-receiver"]
-    command: ["-listen", "0.0.0.0:18080", "-key-id", "demo/a-v1"]
+    command: ["-listen", "0.0.0.0:18080", "-key-id", "demo/a-v1", "-mode", "${HOOKRELAY_DEMO_A_MODE:-ok}"]
     environment:
       DATABASE_URL: *db-url
       DEMO_RECEIVER_SECRET: ${HOOKRELAY_DEMO_A_SECRET:?Run scripts/init-compose-env.ps1 first}

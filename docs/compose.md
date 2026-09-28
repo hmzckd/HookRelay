@@ -15,6 +15,8 @@ Compose tek bir uygulama image'ı derler. Aynı image API, worker, tek seferlik 
 
 `smoke-compose.ps1` üretici anahtarını dosyadan okuyup iki hedefli bir olay gönderir ve iki teslimatın da `succeeded` olmasını bekler. Olay kimliğini çıktı olarak verir. Tekrar çalıştırmak yeni bir olay açar. Yerel Go süreçleri `8080` portunu kullanıyorsa önce durdurun. Compose'un kendi PostgreSQL'i masaüstündeki yerel PostgreSQL veritabanından ayrıdır.
 
+Retry, yanıt kaybı, terminal hata ve idempotency demosu için çalışan Compose projesinde `.\scripts\demo-compose.ps1 -ProjectName hookrelay` çalıştırın. Betik demo-a alıcısını geçici olarak farklı modlarda yeniden açar ve sonunda `ok` moduna döndürür. Tek bir modu elle seçmek isterseniz `HOOKRELAY_DEMO_A_MODE` ortam değişkeni `ok`, `flaky`, `error` veya `drop-after-commit` olabilir; varsayılan `ok` değeridir. [Kısa demo akışı](demo.md).
+
 Eski olayları koruyarak uygulamayı yeniden başlatmak veya kapatmak için:
 
 ```powershell
