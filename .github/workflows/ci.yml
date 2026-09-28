@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hookrelay
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: hookrelay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hookrelay -d hookrelay_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgres://hookrelay:test-password@127.0.0.1:5432/hookrelay_test?sslmode=disable
+      CGO_ENABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Format
+        run: |
+          files=$(gofmt -l $(git ls-files '*.go'))
+          if [ -n "$files" ]; then
+            printf 'Unformatted Go files:\n%s\n' "$files"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Test with PostgreSQL
+        run: go test -count=1 ./...
+      - name: Race test with PostgreSQL
+        run: go test -race -count=1 ./...
+      - name: Build image
+        run: docker build -t hookrelay:ci .

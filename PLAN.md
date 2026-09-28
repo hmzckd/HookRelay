@@ -1,7 +1,7 @@
 # HookRelay — sürüm sürüm geliştirme planı
 
-Plan tarihi: 23 Eylül 2026  
-Durum: v1.0/HR-027 belge eşleştirmesi tamamlandı; sıradaki iş HR-028 CI tanımı ve yerel eşdeğer kontrollerdir. Dış HTTPS hedefi yapılandırılabilir; gerçek internet alıcısına gönderim denenmedi. Race detector bu Windows ortamında çalıştırılamadı; yayımlanmış sürüm etiketi yoktur. Gerçek durum ve kanıtlar [docs/tasks.md](docs/tasks.md) dosyasında.  
+Plan tarihi: 23 Eylül 2026
+Durum: v1.0/HR-028 CI tanımı ve yerel kontroller tamamlandı; GitHub Actions koşusu doğrulanıyor. Dış HTTPS hedefi yapılandırılabilir; gerçek internet alıcısına gönderim denenmedi. Race detector bu Windows ortamında çalıştırılamadı; yayımlanmış sürüm etiketi yoktur. Gerçek durum ve kanıtlar [docs/tasks.md](docs/tasks.md) dosyasında.
 Hedef: Yerelde çalıştırılabilen ve mühendislik kararları gösterilebilen v1.0. AWS isteğe bağlıdır.
 
 ## 1. Projenin amacı ve sınırları
@@ -324,4 +324,4 @@ Görev durumları: `TODO → IN_PROGRESS → VERIFY → DONE`; dış bağımlıl
 
 Bu ilk dilimin demosu şu kadar küçük kalır: “Bir olay gönder; event ID al; API sürecini yeniden başlat; aynı olayı oku; teslimat satırının pending olduğunu göster. Teslimat kaydı oluşturulamazsa olayın da oluşmadığını test et.” Worker ve altyapı genişlemesi sonraki sürümlerdedir.
 
-HR-027 tamamlandıktan sonra sonraki geliştirme işi v1.0/HR-028 CI tanımı ve yerel eşdeğer kontrollerdir. Çalışmalar sürüm/görev sırasıyla ilerler; bütün yol haritası tek değişiklikte uygulanmaz.
+HR-028'den sonraki geliştirme işi HR-029 temiz kurulum ve demo doğrulamasıdır. Çalışmalar sürüm/görev sırasıyla ilerler; bütün yol haritası tek değişiklikte uygulanmaz.
