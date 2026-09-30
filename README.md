@@ -2,7 +2,7 @@
 
 HookRelay, olayları kabul edip kayıtlı hedeflere imzalı webhook gönderen bir Go servisidir. API, olay ve hedef başına teslimat işlerini PostgreSQL'de tek transaction'la kaydeder; worker'lar bu işleri paylaşır, [sınırlı tekrar deneme](docs/retry-policy.md) yapar ve her girişimin sonucunu tutar. Süreç kaybından sonra iş yeniden alınabilir; demo alıcısı aynı `delivery_id` için yerel yan etkiyi tekilleştirir. [Nasıl çalışır?](docs/project-overview.md) · [Güncel mimari](docs/architecture.md) · [HTTP sözleşmesi](api/openapi.yaml).
 
-**Yerel v1.0 kabulü tamamlandı.** Aynı image, Docker Compose veya kind üzerinde API, worker, migration ve demo alıcıları olarak çalışır. Temiz Compose kurulumu, iki hedefli teslimat, retry, yanıt kaybı ve kalıcı hata denendi. [Kısa demo](docs/demo.md) · [kabul raporu](docs/releases/v1.0.md) · [Compose rehberi](docs/compose.md) · [kind rehberi](docs/kind.md) · [CI](docs/ci.md). Git sürüm etiketi, bulut kurulumu veya üretim garantisi yoktur.
+**Yerel v1.0 kabulü tamamlandı.** Aynı image, Docker Compose veya kind üzerinde API, worker, migration ve demo alıcıları olarak çalışır. Temiz Compose kurulumu, iki hedefli teslimat, retry, yanıt kaybı ve kalıcı hata denendi. [Kısa demo](docs/demo.md) · [kabul raporu](docs/releases/v1.0.md) · [Compose rehberi](docs/compose.md) · [kind rehberi](docs/kind.md) · [CI](docs/ci.md) · [isteğe bağlı bulut planı](docs/cloud-plan.md). Git sürüm etiketi, bulut kurulumu veya üretim garantisi yoktur.
 
 ## Çalıştırma yolları ve gereksinimler
 

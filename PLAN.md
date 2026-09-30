@@ -247,6 +247,7 @@ Her görev bir gözden geçirilebilir değişiklik ve onun doğrudan doğrulamas
 | HR-028 | v1.0 | CI tanımı ve yerel eşdeğer kontroller; uzaktan çalıştırma durumu açık olsun. |
 | HR-029 | v1.0 | Temiz kurulum, kısa demo ve sürüm kabul raporunu tamamla. |
 | HR-030 | v1.1+ | Yalnızca ihtiyaç doğarsa bulut seçeneklerini, maliyeti ve kaldırmayı planla. |
+| HR-031 | v1.0 yayın hazırlığı | Kaynak adayını, yerel kontrolleri ve GitHub Release metni taslağını kaydet; etiket/yayın ayrı kalsın. |
 
 ## 7. Test ve demo kabul matrisi
 
@@ -324,4 +325,5 @@ Görev durumları: `TODO → IN_PROGRESS → VERIFY → DONE`; dış bağımlıl
 
 Bu ilk dilimin demosu şu kadar küçük kalır: “Bir olay gönder; event ID al; API sürecini yeniden başlat; aynı olayı oku; teslimat satırının pending olduğunu göster. Teslimat kaydı oluşturulamazsa olayın da oluşmadığını test et.” Worker ve altyapı genişlemesi sonraki sürümlerdedir.
 
-HR-029 ile yerel v1.0 kabulü tamamlandı. HR-030 bulut seçeneklerini yalnızca ihtiyaç, bütçe ve kaldırma planı netleşirse ele alır.
+HR-029 ile yerel v1.0 kabulü tamamlandı. HR-030 kapsamında [isteğe bağlı bulut seçenekleri, örnek maliyet ve kaldırma planı](docs/cloud-plan.md) hazırlandı. Bu plan kaynak açma kararı veya bulut kurulum kanıtı değildir.
+AWS ertelendiği için HR-031 [yerel v1.0 yayın hazırlığı](docs/releases/v1.0-publication.md) olarak yapıldı; etiket veya GitHub Release oluşturulmadı.
